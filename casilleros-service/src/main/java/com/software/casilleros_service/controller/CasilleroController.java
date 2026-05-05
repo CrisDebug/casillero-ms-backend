@@ -13,7 +13,7 @@ import java.util.List;
  * Aquí llega la comunicación desde Angular o Postman.
  */
 @RestController
-@RequestMapping("/casilleros")
+@RequestMapping("/api/casilleros")
 @CrossOrigin(origins = "*") // temporal para evitar problemas con Angular
 public class CasilleroController {
 

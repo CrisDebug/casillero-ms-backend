@@ -1,6 +1,7 @@
 package com.software.casilleros_service.config;
 
 import com.software.casilleros_service.security.JwtFilter;
+import com.software.casilleros_service.security.JwtUtil;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
@@ -11,39 +12,72 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 @Configuration
 public class SecurityConfig {
 
-    private final JwtFilter jwtFilter;
+    /**
+     * 🔐 Creamos el utilitario JWT como Bean de Spring
+     * Esto permite que pueda ser inyectado en otros componentes
+     */
+    @Bean
+    public JwtUtil jwtUtil() {
+        return new JwtUtil();
+    }
 
-    public SecurityConfig(JwtFilter jwtFilter) {
-        this.jwtFilter = jwtFilter;
+    /**
+     * 🔐 Creamos el filtro JWT como Bean
+     * IMPORTANTE: recibe JwtUtil porque lo necesita para validar tokens
+     */
+    @Bean
+    public JwtFilter jwtFilter(JwtUtil jwtUtil) {
+        return new JwtFilter(jwtUtil);
+    }
+
+    /**
+     * 🛡️ Configuración principal de seguridad del microservicio
+     */
+    @Bean
+    public SecurityFilterChain securityFilterChain(HttpSecurity http, JwtFilter jwtFilter) throws Exception {
+
+    http
+        // ❌ CSRF desactivado (JWT)
+        .csrf(csrf -> csrf.disable())
+
+        // 🌐 CORS habilitado AQUÍ (IMPORTANTE)
+        .cors(cors -> {})
+
+        // 🧠 stateless API
+        .sessionManagement(session ->
+            session.sessionCreationPolicy(SessionCreationPolicy.STATELESS)
+        )
+
+        // 🔐 reglas de seguridad
+        .authorizeHttpRequests(auth -> auth
+
+            .requestMatchers("/api/public/**").permitAll()
+
+            .requestMatchers("/casilleros/**").authenticated()
+
+            .anyRequest().authenticated()
+        )
+
+        // 🔧 JWT filter
+        .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class);
+
+    return http.build();
     }
 
     @Bean
-    public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
+public org.springframework.web.cors.CorsConfigurationSource corsConfigurationSource() {
 
-        http
-            // 🔓 deshabilitamos CSRF (JWT no usa sesiones)
-            .csrf(csrf -> csrf.disable())
+    org.springframework.web.cors.CorsConfiguration config = new org.springframework.web.cors.CorsConfiguration();
 
-            // 🧠 API stateless
-            .sessionManagement(session ->
-                session.sessionCreationPolicy(SessionCreationPolicy.STATELESS)
-            )
+    config.addAllowedOrigin("http://localhost:4200");
+    config.addAllowedMethod("*");
+    config.addAllowedHeader("*");
 
-            // 🛡️ reglas de acceso
-            .authorizeHttpRequests(auth -> auth
+    org.springframework.web.cors.UrlBasedCorsConfigurationSource source =
+            new org.springframework.web.cors.UrlBasedCorsConfigurationSource();
 
-                // opcional: endpoints públicos
-                .requestMatchers("/api/public/**").permitAll()
+    source.registerCorsConfiguration("/**", config);
 
-                // 🔐 todo lo demás protegido
-                .requestMatchers("/casilleros/**").authenticated()
-
-                .anyRequest().authenticated()
-            )
-
-            // 🔧 filtro JWT antes del filtro de Spring Security
-            .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class);
-
-        return http.build();
+    return source;
     }
 }
