@@ -16,6 +16,7 @@
         * Aquí podríamos agregar consultas personalizadas si las necesitamos.
         * Ejemplo:
         * Optional<Casillero> findByManualId(Long manualId);
+        * 
         */
-
+        
     }
